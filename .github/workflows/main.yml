@@ -64,15 +64,16 @@ jobs:
       - name: Install Trivy CLI
         id: install-trivy
         run: |
-          TRIVY_VERSION=0.65.0
-          curl -sfL https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz -o trivy.tar.gz
-          sudo tar -xzf trivy.tar.gz -C /usr/local/bin trivy
-          /usr/local/bin/trivy --version
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+          trivy --version
 
       - name: Run Trivy scanner (CLI)
         id: run-trivy-scanner
         run: |
-          /usr/local/bin/trivy image \
+          trivy image \
             --format table \
             --exit-code 1 \
             --ignore-unfixed \
