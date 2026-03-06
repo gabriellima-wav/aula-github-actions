@@ -53,7 +53,7 @@ jobs:
           SHA=$(echo $GITHUB_SHA | head -c7)
           echo "sha=$SHA" >> $GITHUB_OUTPUT
 
-      - name: Build and Push the image to AWS ECR
+      - name: Build and Export  
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -61,16 +61,24 @@ jobs:
           tags: | 
              ${{ steps.login-ecr.outputs.registry }}/${{vars.ECR_REPOSITORY}}:test
 
-      - name: Run Trivy scanner
-        id : run-trivy-scanner
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          image-ref: '${{ steps.login-ecr.outputs.registry }}/${{vars.ECR_REPOSITORY}}:test'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+      - name: Install Trivy CLI
+        id: install-trivy
+        run: |
+          TRIVY_VERSION=0.65.0
+          curl -sfL https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz -o trivy.tar.gz
+          sudo tar -xzf trivy.tar.gz -C /usr/local/bin trivy
+          /usr/local/bin/trivy --version
+
+      - name: Run Trivy scanner (CLI)
+        id: run-trivy-scanner
+        run: |
+          /usr/local/bin/trivy image \
+            --format table \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --vuln-type os,library \
+            --severity CRITICAL,HIGH,MEDIUM,LOW \
+            ${{ steps.login-ecr.outputs.registry }}/${{vars.ECR_REPOSITORY}}:test
 
       - name: Build and Push the image to AWS ECR
         uses: docker/build-push-action@v6
